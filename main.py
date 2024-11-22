@@ -2,6 +2,9 @@ import datetime
 import jwt
 import json
 
+import google.auth
+from google.cloud import iam_credentials_v1
+
 def generate_jwt_payload(service_account_email, resource_url):
   """Generates JWT payload for service account.
 
@@ -25,38 +28,34 @@ def generate_jwt_payload(service_account_email, resource_url):
       'exp': exp,
   }
 
-def sign_jwt_with_key_file(credential_key_file_path, resource_url):
-  """Signs JWT payload using local service account credential key file.
+def sign_jwt_with_key_file(credential_key_file_path, target_sa, resource_url):
+    """Signs JWT payload using local service account credential key file.
 
-  Args:
+    Args:
     credential_key_file_path (str): Path to the downloaded JSON credentials of the service
       account the JWT is being created for.
     resource_url (str): Scope of JWT token, This is the url of the IAP protected application.
-  Returns:
+    Returns:
     A service account JWT created with a downloaded private key.
-  """
-  with open(credential_key_file_path, 'r') as credential_key_file:
-      key_data = json.load(credential_key_file)
+    """
+    with open(credential_key_file_path, 'r') as credential_key_file:
+        key_data = json.load(credential_key_file)
 
-  PRIVATE_KEY_ID_FROM_JSON = key_data["private_key_id"]
-  PRIVATE_KEY_FROM_JSON = key_data["private_key"]
-  SERVICE_ACCOUNT_EMAIL = key_data["client_email"]
+    PRIVATE_KEY_ID_FROM_JSON = key_data["private_key_id"]
+    SERVICE_ACCOUNT_EMAIL = key_data["client_email"]
 
-  additional_headers = {
-      "alg": "RS256",
-      "typ": "JWT",
-      "kid": PRIVATE_KEY_ID_FROM_JSON
-  }
+    payload = generate_jwt_payload(service_account_email=SERVICE_ACCOUNT_EMAIL,target_sa="", resource_url=resource_url)
 
-  payload = generate_jwt_payload(service_account_email=SERVICE_ACCOUNT_EMAIL, resource_url=resource_url)
+    source_credentials, _ = google.auth.default()
+    iam_client = iam_credentials_v1.IAMCredentialsClient(credentials=source_credentials)
+    return iam_client.sign_jwt(
+      name=iam_client.service_account_path('-', target_sa),
+      payload=payload,
+    ).signed_jwt
 
-  signed_jwt = jwt.encode(
-      payload,
-      PRIVATE_KEY_FROM_JSON,
-      headers=additional_headers,
-      algorithm='RS256',
-  )
-  return signed_jwt
+    return signed_jwt
+
+
 
 token = sign_jwt_with_key_file("./payload_GCP.json", 'MYURL')
 
