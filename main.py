@@ -56,7 +56,10 @@ def sign_jwt_with_key_file(credential_key_file_path, target_sa, resource_url):
     return signed_jwt
 
 
+JSON_FILE = "./payload_GCP.json"
+TARGET_SA = "MY_SA"
+TARGET_URL = "MY_URL"
 
-token = sign_jwt_with_key_file("./payload_GCP.json", 'MYURL')
+token = sign_jwt_with_key_file(JSON_FILE,TARGET_SA, TARGET_URL)
 
 print(token)
